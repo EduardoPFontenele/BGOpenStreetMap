@@ -1,0 +1,21 @@
+[
+  {"landmark": "ufmt-guarita", "geo": "-15.8772886, -52.3131509"},
+  {"landmark": "ufmt-administracao", "geo": "-15.875329, -52.3134445"},
+  {"landmark": "ufmt-biblioteca", "geo": "-15.8750393, -52.3119392"},
+  {"landmark": "ufmt-ru", "geo": "-15.8741709, -52.3116192"},
+  {"landmark": "hotel-boa-viagem", "geo": "-15.8781994, -52.3124967"},
+  {"landmark": "madre-marta", "geo": "-15.8897132, -52.2593536"},
+  {"landmark": "aguas_quentes", "geo": "-15.881045738972022, -52.212747566252965"},
+  {"landmark": "forum", "geo": "-15.896992346270086, -52.27686148841572"},
+  {"landmark": "igreja_matriz", "geo": "-15.88872904997466, -52.257357910895976"},
+  {"landmark": "restaurante_vitoria_regia", "amenity": "food", "geo": "-15.89146996951015, -52.26065933883823"},
+  {"landmark": "prefeitura", "geo": "-15.893810711216966, -52.26493151732772"},
+  {"landmark": "restaurante_subway", "amenity": "food", "geo": "-15.891202264962315, -52.25423477499856"},
+  {"landmark": "mendonca_center", "amenity": "food", "geo": "-15.891681507288927, -52.26217615417926"},
+  {"landmark": "kanoa_bar", "amenity": "food", "geo": "-15.891779320548364, -52.2543821442919"},
+  {"landmark": "mirante_cristo", "geo": "-15.871357538925922, -52.261127036361536"},
+  {"landmark": "banco_brasil", "geo": "-15.892102706937699, -52.261899828456585"},
+  {"landmark": "bg_stadio", "amenity": "food", "geo": "-15.88221379567382, -52.26385205965771"},
+  {"landmark": "cachoeira_usina", "geo": "-15.870659183894597, -52.2527812488762"},
+  {"landmark": "flutuante", "amenity": "food", "geo": "-15.891950609652085, -52.25405671291983"}
+]

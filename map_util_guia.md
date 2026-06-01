@@ -63,7 +63,7 @@ city_map.tags["2833687589"]
 ```
 
 #### 3. `distances: dict[str, dict[str, float]]`  *(é um `defaultdict(dict)`)*
-O **grafo**. Para cada local, devolve um dicionário `{vizinho: distância_em_metros}`. É o que o `successors` percorre.
+O **grafo**. Para cada local, devolve um dicionário `{vizinho: distância_em_metros}`.
 
 ```python
 city_map.distances["5924085995"]

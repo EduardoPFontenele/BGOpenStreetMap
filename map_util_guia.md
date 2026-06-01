@@ -216,7 +216,7 @@ location_from_tag("amenity=food", city_map)
 Recebe um caminho (lista de labels), imprime as tags de cada local e, opcionalmente, grava o `path.json` usado pela visualização.
 
 ### `print_map(city_map)`
-Ferramenta de depuração: imprime todos os locais, suas tags e suas conexões. Não é necessária para o trabalho.
+Ferramenta de depuração: imprime todos os locais, suas tags e suas conexões.
 
 ### `create_bg_map() -> CityMap`
 A função que você de fato chama. Junta `read_map` + `add_landmarks` em uma linha. É o **ponto de entrada**: uma chamada e você recebe o mapa completo de Barra do Garças, com grafo e landmarks prontos.

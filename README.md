@@ -252,3 +252,249 @@ graph TD
     CM --> Q["location_from_tag / print_path<br/>(consultam e exibem)"]
     CD["compute_distance<br/>(mede distância entre 2 pontos)"] -.->|"usada por add_connection e pela heurística"| CM
 ```
+# Guia do `search_base.py`
+ 
+Enquanto o `map_util.py` cuida dos **dados** (o mapa), o `search_base.py` define o **maquinário genérico de busca**: as classes-base que UCS e A\* usam. Nenhum algoritmo é implementado aqui — o arquivo só estabelece os contratos e as estruturas. São quatro classes:
+ 
+- `State` — a unidade de estado (o que a busca compara e usa como chave).
+- `SearchProblem` — o contrato de um problema (início, objetivo, sucessores, heurística).
+- `Node` — um vértice da árvore de busca (estado + histórico + custo).
+- `SearchAlgorithm` — a interface comum que UCS e A\* implementam.
+```mermaid
+graph TD
+    State["State<br/>(location, memory)"] --> Node["Node<br/>(state, parent, action, path_cost)"]
+    State --> SP["SearchProblem<br/>(initial_state, goal_state,<br/>successors, h)"]
+    SP -->|"successors() alimenta expand()"| Node
+    Node --> SA["SearchAlgorithm.solve()<br/>(UCS / A* herdam)"]
+    SP --> SA
+```
+ 
+---
+ 
+## Classe `State`
+ 
+Encapsula um estado do espaço de busca. A identidade do estado é composta por dois campos: `location` (`str`) e `memory` (`frozenset`).
+ 
+### Atributos
+| Atributo | Tipo | Significado |
+|----------|------|-------------|
+| `location` | `str` | "onde estou" — no trabalho, o label do nó do mapa |
+| `memory` | `frozenset` | informação extra cumprida pelo estado (vazia no Problema 1) |
+ 
+### Construtor
+ 
+```python
+def __init__(self, location: str, memory: frozenset=None):
+    self.location = location
+    self.memory = memory if memory is not None else frozenset()
+```
+ 
+O default de `memory` é resolvido **no corpo** (via `None`), não na assinatura. Isso evita o problema clássico do *mutable default argument* (um objeto default único compartilhado entre todas as chamadas) e é a forma idiomática em Python.
+ 
+### Métodos especiais
+ 
+```python
+def __hash__(self):
+    return hash((self.location, self.memory))
+ 
+def __eq__(self, other):
+    return (self.location, self.memory) == (other.location, other.memory)
+```
+ 
+A classe é **hashable** porque depende apenas de campos imutáveis (`str` e `frozenset` são hashable; `set` e `list` não). O `__hash__` é o que permite usar `State` como **chave de dicionário** — exatamente o que a tabela `reached` dos algoritmos exige. Em Python, definir `__eq__` sem `__hash__` torna o objeto *unhashable*; por isso os dois coexistem e derivam da mesma tupla `(location, memory)`, mantendo o contrato `a == b ⟹ hash(a) == hash(b)`.
+ 
+```python
+State("100") == State("100")                     # True
+State("100") == State("200")                     # False
+State("100", frozenset({"x"})) == State("100")   # False (memory diferente)
+ 
+print(State("100"))
+# State(location='100', memory=frozenset())
+```
+ 
+### O papel do `memory`
+ 
+O `memory` entra na **definição de igualdade** do estado. A pergunta que ele responde é: *o que faz duas situações serem "o mesmo estado" para a busca?*
+ 
+**Problema 1 (memory vazio):** como `memory` é sempre `frozenset()`, quem decide a igualdade é só a `location`. "Estar no local X" é um único estado, independentemente de como se chegou nele — o comportamento correto para caminho mais curto.
+ 
+**Problema 2 (memory em uso):** quando há pontos de passagem obrigatórios, "estar no local X" deixa de ser único. Considere a tarefa "passar pelo Banco do Brasil antes do destino":
+ 
+```python
+State("X", frozenset())                  # no local X, banco NÃO visitado
+State("X", frozenset({"banco_brasil"}))  # no local X, banco JÁ visitado
+```
+ 
+Pelo `__eq__`, esses dois **não são iguais** (mesma `location`, `memory` diferente), então a busca os trata como estados distintos. Sem isso, o algoritmo poderia descartar a versão que ainda precisa cumprir a tarefa.
+ 
+Por que `frozenset` especificamente:
+1. Precisa ser **hashable** para entrar no `__hash__` (um `set`/`list` mutável daria erro ao virar chave).
+2. **Ignora ordem**: `frozenset({"a", "b"}) == frozenset({"b", "a"})` — importa *quais* tarefas foram cumpridas, não em que ordem.
+### Como se conecta ao resto
+`State` aparece em todos os outros pontos: `SearchProblem` guarda início e objetivo como `State`; `Node` embrulha um `State`; e a tabela `reached` usa `State` como chave (via `__hash__`/`__eq__`).
+ 
+---
+ 
+## Classe `SearchProblem`
+ 
+Classe base que define a interface de um problema de busca. Marca os pontos de extensão com `NotImplementedError`. O `ShortestPathProblem` herda dela e preenche os detalhes.
+ 
+### Atributos
+| Atributo | Tipo | Significado |
+|----------|------|-------------|
+| `initial_state` | `State` | estado de partida |
+| `goal_state` | `State` | estado objetivo |
+ 
+### Métodos concretos (já funcionais na base)
+ 
+```python
+def get_initial_state(self) -> State:
+    return self.initial_state
+ 
+def is_goal(self, state: State) -> bool:
+    return state == self.goal_state
+```
+ 
+`is_goal` delega ao `__eq__` de `State`, por isso funciona sem ser sobrescrito. No Problema 2, isso se adapta sozinho: atingir o objetivo passará a exigir não só a `location` certa, mas também a `memory` correta (todos os waypoints visitados).
+ 
+### Métodos de extensão (contratos a implementar)
+ 
+```python
+def successors(self, state: State) -> Iterator[tuple[State, str, float]]:
+    raise NotImplementedError("Override me")
+ 
+def h(self, state: State) -> float:
+    raise NotImplementedError("Override me")
+```
+ 
+`successors` retorna um **iterador de triplas** `(estado, ação, custo)` — a anotação `Iterator` indica uso de `yield`. `h` é a heurística, exercitada apenas por buscas informadas. O `NotImplementedError` é uma exceção *runtime*: Python não força a implementação no carregamento da classe (diferente de `@abstractmethod`); o erro só aparece se o método for chamado sem ter sido sobrescrito.
+ 
+> Consequência prática: um `ShortestPathProblem` sem `h` rodaria com UCS (que nunca chama `h`) e quebraria com A\* (que chama).
+ 
+### Como se conecta ao resto
+É o objeto passado para `algoritmo.solve(problem)`. Os algoritmos usam `get_initial_state` (início), `is_goal` (parada), `successors` (expansão) e `h` (A\*). Os dois métodos com `NotImplementedError` são os "buracos" que a subclasse preenche.
+ 
+---
+ 
+## Classe `Node`
+ 
+Representa um vértice da árvore de busca. Diferencia-se de `State` por carregar o **contexto de derivação**: o estado, o nó pai, a ação aplicada e o custo acumulado.
+ 
+### Atributos
+| Atributo | Significado |
+|----------|-------------|
+| `state` | o `State` que este nó representa |
+| `parent` | o nó pai (`None` na raiz) |
+| `action` | a ação que levou do pai até aqui (`None` na raiz) |
+| `path_cost` | `g(n)` — custo real acumulado da raiz até aqui |
+ 
+```python
+raiz = Node(State("100"))
+raiz.parent      # None
+raiz.action      # None
+raiz.path_cost   # 0.0
+ 
+filho = Node(State("200"), parent=raiz, action="200", path_cost=53.2)
+filho.parent     # raiz
+filho.path_cost  # 53.2
+```
+ 
+A estrutura forma uma **lista ligada invertida**: cada nó referencia seu predecessor via `parent`, terminando em `None`. Não há referência dos pais para os filhos.
+ 
+```mermaid
+graph RL
+    F["Node folha<br/>state=destino, path_cost=g"] -->|parent| M["Node<br/>intermediário"] -->|parent| R["Node raiz<br/>parent=None, path_cost=0.0"]
+```
+ 
+### Reconstrução do caminho
+ 
+```python
+def path_actions(self) -> list[str]:
+    actions = []
+    node = self
+    while node.parent is not None:
+        actions.append(node.action)
+        node = node.parent
+    actions.reverse()
+    return actions
+```
+ 
+Sobe pela cadeia de `parent` acumulando `action` e para na raiz (`parent is None`). O `reverse()` corrige a ordem (a coleta vai da folha para a raiz). Complexidade O(d), com `d` = profundidade.
+ 
+`path_states` é análogo, mas a condição é `while node is not None` (inclui a raiz, cujo estado faz parte do caminho):
+ 
+```python
+filho.path_states()
+# [State("100"), State("200")]
+```
+ 
+> A diferença `parent is not None` (ações) vs `node is not None` (estados) reflete que um caminho de **n** nós tem **n** estados mas **n-1** ações — a raiz tem estado, mas não tem ação de chegada.
+ 
+### Expansão
+ 
+```python
+def expand(self, problem: SearchProblem):
+    for state, action, cost in problem.successors(self.state):
+        yield Node(state, self, action, self.path_cost + cost)
+```
+ 
+Para cada tripla de `successors`, instancia um `Node` filho com `self` como `parent` e `path_cost = self.path_cost + cost`. Essa soma é onde o `g` se propaga incrementalmente pela árvore. Por ser gerador (`yield`), os filhos são produzidos sob demanda.
+ 
+```mermaid
+graph LR
+    N["node.expand(problem)"] --> S["problem.successors(state)"]
+    S --> T["tripla<br/>(estado, ação, custo)"]
+    T --> C["Node filho<br/>path_cost = pai + custo"]
+```
+ 
+### Como se conecta ao resto
+O `Node` é o que vive na fronteira (`PriorityQueue`) e na tabela `reached`. O algoritmo retira nós da fronteira, testa o `state` com `is_goal` e, ao achar o objetivo, chama `path_actions()`/`path_states()`. O `path_cost` é a prioridade na UCS (`g`) e a base do `f = g + h` no A\*.
+ 
+---
+ 
+## Classe `SearchAlgorithm`
+ 
+Interface mínima para algoritmos de busca. Um único método de contrato:
+ 
+```python
+class SearchAlgorithm:
+    def solve(self, search_problem: SearchProblem) -> None:
+        raise NotImplementedError("Override me")
+```
+ 
+Define o **polimorfismo** entre `UniformCostSearch` e `AStar`: ambos herdam e implementam `solve`. Como o retorno é `None`, o padrão é **efeito colateral em atributos de instância** (`self.actions`, `self.path_cost`, etc.) — o cliente lê os resultados nos campos do objeto após o `solve`. É por isso que um `return self` dentro do `solve` é inócuo (o retorno é descartado) e por que dá para trocar `UniformCostSearch()` por `AStar()` no `trab-parte1.py` sem mexer em mais nada.
+ 
+---
+ 
+## Como tudo se encaixa (ciclo de vida da busca)
+ 
+```python
+# 1. Define o problema (SearchProblem -> ShortestPathProblem)
+problem = ShortestPathProblem(start, end, city_map)
+ 
+# 2. O algoritmo começa pelo estado inicial, embrulhado num Node
+node = Node(problem.get_initial_state())
+ 
+# 3. Repete: tira um nó, testa objetivo, expande
+while not frontier.is_empty():
+    node = frontier.pop()
+    if problem.is_goal(node.state):        # aciona State.__eq__
+        return node.path_actions()         # reconstrói subindo os parents
+    for child in node.expand(problem):     # expand chama successors e propaga g
+        s = child.state
+        if s not in reached or child.path_cost < reached[s].path_cost:
+            reached[s] = child             # reached usa State como chave (State.__hash__)
+            frontier.push(child)
+```
+ 
+Responsabilidades disjuntas das quatro classes:
+ 
+| Classe | Responsabilidade |
+|--------|------------------|
+| `State` | identidade hashable (igualdade + hash a partir de `location` e `memory`) |
+| `SearchProblem` | topologia (`successors`), parada (`is_goal`), estimativa (`h`) |
+| `Node` | árvore de derivação (`parent`/`action`) e propagação de custo (`path_cost`) |
+| `SearchAlgorithm` | interface comum de resolução (`solve`) |
+ 
+A diferença entre UCS e A\* fica isolada inteiramente na função `key` da `PriorityQueue` — `g(n)` versus `g(n) + h(n)` — sem qualquer alteração nessas quatro classes base.
+ 

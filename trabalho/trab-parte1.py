@@ -1,9 +1,10 @@
 from search_base import SearchProblem, SearchAlgorithm, State
-from map_util import CityMap, GeoLocation, create_bg_map, location_from_tag, read_map, print_path
+from map_util import CityMap, GeoLocation, create_bg_map, location_from_tag, read_map, print_path,compute_distance
 from visualization import plot_map
 import plotly.graph_objects as go
 from typing import Iterator
 from ucs import UniformCostSearch
+from a_start import AStar
 
 # Modela o problema de encontrar o caminho mais curto entre duas localizações em um mapa da cidade
 class ShortestPathProblem(SearchProblem):
@@ -13,9 +14,14 @@ class ShortestPathProblem(SearchProblem):
 
     
     def successors(self, state: State) -> Iterator[tuple[State, str, float]]:
-        # IMPLEMENTE AQUI: Gere os estados sucessores a partir do estado atual
-        pass
 
+        for neighbor, dist in self.city_map.distances[state.location].items():
+           yield State(neighbor), neighbor, dist
+
+    def h(self, state: State) -> float:
+        return compute_distance(
+            self.city_map.geo_locations[state.location],
+            self.city_map.geo_locations[self.goal_state.location])
 
 # Realiza testes e visualiza os resultados
 if __name__ == "__main__":
@@ -25,7 +31,7 @@ if __name__ == "__main__":
     end = location_from_tag("landmark=madre-marta", city_map)
     
     problem = ShortestPathProblem(start_location=start, end_location=end, city_map=city_map)
-    ucs = UniformCostSearch()
+    ucs = AStar()
     ucs.solve(problem)
 
     # Função para gerar um arquivo json com o caminho encontrado, caso queira salva-lo

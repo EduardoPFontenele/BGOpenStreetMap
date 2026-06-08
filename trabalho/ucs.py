@@ -23,8 +23,29 @@ class UniformCostSearch(SearchAlgorithm):
         self.num_states_explored: int = 0      
         
         # Inicializa a fronteira e a tabela de estados alcançados
+        start = Node(search_problem.get_initial_state())
         frontier = PriorityQueue(key=lambda n: self.g(n)) 
-        reached = {} # Guarda o nó de menor custo para cada estado alcançado
+        frontier.push(start)
+        reached = {start.state: start} # Guarda o nó de menor custo para cada estado alcançado
 
-        # COLOQUE AQUI O SEU CÓDIGO PARA TERMINAR UCS COM TABELA DE ESTADOS ALCANÇADOS 
+        while not frontier.is_empty():
+
+            removed = frontier.pop()
+            self.num_states_explored += 1
+
+            if search_problem.is_goal(removed.state):
+
+                self.actions = removed.path_actions()
+                self.states = removed.path_states()
+                self.path_cost = removed.path_cost
+
+                return self
+            
+            for child in removed.expand(search_problem):
+
+                s = child.state
+                if s not in reached or child.path_cost < reached[s].path_cost:
+                    reached[s] = child
+                    frontier.push(child)
+
        

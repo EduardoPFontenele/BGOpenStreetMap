@@ -6,24 +6,25 @@ from typing import Iterator
 from ucs import UniformCostSearch
 
 # Modela o problema de encontrar o caminho mais curto entre duas localizações em um mapa da cidade
-
 class ShortestPathProblem(SearchProblem):
     def __init__(self, start_location: str, end_location: str, city_map: CityMap):
         super().__init__(initial_state=State(start_location), goal_state=State(end_location))
         self.city_map = city_map
 
+    
     def successors(self, state: State) -> Iterator[tuple[State, str, float]]:
-        for neighbor, distance in self.city_map.distances[state.location].items():
-            yield State(neighbor), neighbor, distance
+        # IMPLEMENTE AQUI: Gere os estados sucessores a partir do estado atual
+        pass
 
 
+# Realiza testes e visualiza os resultados
 if __name__ == "__main__":
     # Exemplo de uso
     city_map = create_bg_map()  # criar um mapa de bg
     start = location_from_tag("landmark=ufmt-biblioteca", city_map)
     end = location_from_tag("landmark=madre-marta", city_map)
     
-    problem = ShortestPathProblem(start_location= start, end_location= end, city_map=city_map)
+    problem = ShortestPathProblem(start_location=start, end_location=end, city_map=city_map)
     ucs = UniformCostSearch()
     ucs.solve(problem)
 

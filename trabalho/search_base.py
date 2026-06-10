@@ -21,12 +21,14 @@ class State:
         self.location = location    
         self.memory = memory if memory is not None else frozenset()
 
+    # Dada uma label e um frozenset retorna um IDENTIFICADOR inteiro para a tupla
     def __hash__(self):
         return hash((self.location, self.memory))
     
     def __repr__(self):
         return f"State(location={self.location!r}, memory={self.memory!r})"
     
+    # Para vericiar se a label e uma info extra são IGUAIS
     def __eq__(self, other):
         return (self.location, self.memory) == (other.location, other.memory)
     

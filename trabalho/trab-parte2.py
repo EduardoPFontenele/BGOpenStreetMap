@@ -1,9 +1,62 @@
-from search_base import SearchProblem
+from search_base import SearchProblem, State
+from map_util import CityMap, create_bg_map, location_from_tag, compute_distance, print_path
+from typing import Iterator
+from a_start import AStar
 
 class WaypointsShortestPathProblem(SearchProblem):
-    # IMPLEMENTE AQUI: Defina o construtor e o método de sucessores
-    pass
 
+    def __init__ (self, start_location: str, end_location: str, waypoint_tags: list[str], city_map: CityMap):
 
+        self.city_map = city_map
+        self.end_location = end_location
+        self.waypoint_tags = frozenset(waypoint_tags)
 
+        start_memory = set()
+
+        # ITERA SOBRE OS PONTOS OBRIGATÓRIOS
+        for tag in waypoint_tags:
+
+            # VERIFICA SE O WAYPOINT ESTÁ NA LISTA DE TAGS DO LOCAL ATUAL
+            if tag in city_map.tags[start_location]:
+                start_memory.add(tag)
+
+        super().__init__(
+            initial_state = State(start_location, frozenset(start_memory)),
+            goal_state = State(end_location, self.waypoint_tags),
+        )
+
+    def successors(self,state):
+        
+
+        for neighbor, distance in self.city_map.distances[state.location].items():
+            new_memory = set(state.memory)
+
+            for tag in self.waypoint_tags:
+                if tag in self.city_map.tags[neighbor]:
+                    new_memory.add(tag)
+            
+            yield State(neighbor, frozenset(new_memory)), neighbor, distance
+
+    def h(self, state: State) -> float:
+        return compute_distance(
+            self.city_map.geo_locations[state.location],
+            self.city_map.geo_locations[self.end_location],
+        )
+    
 # Realize testes e visualiza os resultados
+if __name__ == "__main__":
+    city_map = create_bg_map()
+    start = location_from_tag("landmark=ufmt-biblioteca", city_map)
+    end = location_from_tag("landmark=madre-marta", city_map)
+    waypoint_tags = ["landmark=banco_brasil", "landmark=prefeitura"]
+
+    problem = WaypointsShortestPathProblem(start, end, waypoint_tags, city_map)
+    astar = AStar()
+    astar.solve(problem)
+
+    print(f"Custo: {astar.path_cost:.2f}m\npassos: {len(astar.actions)}")
+    print_path([start] + astar.actions, waypoint_tags, city_map)
+
+    from visualization import plot_map
+    plot_map(city_map, [start] + astar.actions,
+        waypoint_tags=waypoint_tags, map_name="A* com Waypoints")

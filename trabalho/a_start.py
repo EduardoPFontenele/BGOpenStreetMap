@@ -12,6 +12,10 @@ class AStar(SearchAlgorithm):
 
     
     def f(self, n:Node, problem: SearchProblem)-> float:
+        """
+        f(n) = custo real de ir de um ponto à outro + estimativa de ir de um ponto à outro.
+        Formalmente: f(n) = g(n) + h(n).
+        """
         return n.path_cost + problem.h(n.state)
          
         # Implementação da UCS com tabela de estados alcançados para evitar reexploração    
@@ -34,8 +38,8 @@ class AStar(SearchAlgorithm):
             node = frontier.pop()
             self.num_states_explored += 1
 
+            # VERIFICA SE O NÓ REMOVIDO DA FRONTEIRA É O ESTADO-META
             if search_problem.is_goal(node.state):
-
                 self.actions = node.path_actions()
                 self.states = node.path_states()
                 self.path_cost = node.path_cost

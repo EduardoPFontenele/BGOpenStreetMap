@@ -1,7 +1,11 @@
-from search_base import SearchProblem, State
-from map_util import CityMap, create_bg_map, location_from_tag, compute_distance, print_path
+from search_base import SearchProblem, SearchAlgorithm, State
+from map_util import CityMap, GeoLocation, create_bg_map, location_from_tag, read_map, print_path,compute_distance
+from visualization import plot_map
+import plotly.graph_objects as go
 from typing import Iterator
+from ucs import UniformCostSearch
 from a_start import AStar
+
 
 class WaypointsShortestPathProblem(SearchProblem):
 
@@ -27,7 +31,6 @@ class WaypointsShortestPathProblem(SearchProblem):
 
     def successors(self,state):
         
-
         for neighbor, distance in self.city_map.distances[state.location].items():
             new_memory = set(state.memory)
 
@@ -43,20 +46,19 @@ class WaypointsShortestPathProblem(SearchProblem):
             self.city_map.geo_locations[self.end_location],
         )
     
-# Realize testes e visualiza os resultados
 if __name__ == "__main__":
-    city_map = create_bg_map()
-    start = location_from_tag("landmark=ufmt-biblioteca", city_map)
-    end = location_from_tag("landmark=madre-marta", city_map)
-    waypoint_tags = ["landmark=banco_brasil", "landmark=prefeitura"]
 
-    problem = WaypointsShortestPathProblem(start, end, waypoint_tags, city_map)
+    city_map = create_bg_map()
+    start = location_from_tag("landmark=ufmt-administracao", city_map)
+    end = location_from_tag("landmark=forum", city_map)
+    waypoint_tags = ["landmark=igreja_matriz", "landmark=flutuante"]
+
+    problem = WaypointsShortestPathProblem(start, end ,waypoint_tags , city_map)
     astar = AStar()
     astar.solve(problem)
 
-    print(f"Custo: {astar.path_cost:.2f}m\npassos: {len(astar.actions)}")
-    print_path([start] + astar.actions, waypoint_tags, city_map)
+    #ucs = UniformCostSearch()
+    #ucs.solve(problem)
 
-    from visualization import plot_map
-    plot_map(city_map, [start] + astar.actions,
-        waypoint_tags=waypoint_tags, map_name="A* com Waypoints")
+    print_path([start] + astar.actions, waypoint_tags, city_map)
+    plot_map(city_map, [start] + astar.actions,waypoint_tags=waypoint_tags, map_name="A* com Waypoints")
